@@ -29,6 +29,7 @@ export type DropdownNavigationOptions =
   | "restart tour"
   | "login page"
   | "integrations"
+  | "byok"
   | KnowledgeListPage["name"]
   | "";
 
@@ -160,6 +161,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
           Setup Agent Integrations
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Item onSelect={() => handleNavigation("byok")}>
+          Manage LLM Providers and Models
         </DropdownMenu.Item>
 
         {knowledgeEnabled && (

@@ -141,6 +141,13 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           success: true,
           error_message: "",
         });
+      } else if (to === "byok") {
+          dispatch(push({ name: "byok page" }));
+          void sendTelemetryEvent({
+            scope: `openBYOK`,
+            success: true,
+            error_message: "",
+          });
       } else if (to === "chat") {
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));

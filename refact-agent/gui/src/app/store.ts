@@ -52,6 +52,7 @@ import { knowledgeSlice } from "../features/Knowledge/knowledgeSlice";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
+import { byokSlice } from "../features/BYOK/byokSlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -115,6 +116,7 @@ const rootReducer = combineSlices(
   knowledgeSlice,
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
+  byokSlice,
 );
 
 const rootPersistConfig = {
@@ -125,6 +127,7 @@ const rootPersistConfig = {
     "tour",
     userSurveySlice.reducerPath,
     agentUsageSlice.reducerPath,
+    byokSlice.reducerPath,
   ],
   stateReconciler: mergeInitialState,
 };

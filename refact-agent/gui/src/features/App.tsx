@@ -32,6 +32,7 @@ import { UserSurvey } from "./UserSurvey";
 import { integrationsApi } from "../services/refact";
 import { KnowledgeList } from "./Knowledge";
 import { LoginPage } from "./Login";
+import { BYOKContainer } from "./BYOK/BYOKContainer";
 
 import styles from "./App.module.css";
 import classNames from "classnames";
@@ -212,6 +213,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
           />
         )}
         {page.name === "knowledge list" && <KnowledgeList />}
+        {page.name === "byok page" && <BYOKContainer host={config.host} />}
       </PageWrapper>
       {page.name !== "welcome" && <Tour page={pages[pages.length - 1].name} />}
     </Flex>

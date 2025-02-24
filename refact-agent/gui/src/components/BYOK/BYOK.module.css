@@ -1,0 +1,78 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.providerSelect {
+  width: 100%;
+  max-width: 400px;
+}
+
+.providerConfig {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+}
+
+.configuredProviders {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.configuredProvider {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-color-secondary);
+}
+
+.providerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.addNewSection {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.newProviderSection {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-color-secondary);
+}
+
+.actionButtons {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.emptyState {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: var(--background-color-secondary);
+  border-radius: 4px;
+}

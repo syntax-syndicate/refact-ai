@@ -38,6 +38,10 @@ export interface LoginPage {
   name: "login page";
 }
 
+export interface BYOKPage {
+  name: "byok page";
+}
+
 export interface IntegrationsSetupPage {
   name: "integrations page";
   projectPath?: string;
@@ -61,6 +65,7 @@ export type Page =
   | DocumentationSettingsPage
   | ChatThreadHistoryPage
   | IntegrationsSetupPage
+  | BYOKPage
   | KnowledgeListPage
   | LoginPage;
 
