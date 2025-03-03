@@ -315,7 +315,7 @@ async fn docker_container_create(
 
     let mut lsp_command = format!(
         "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr --inside-container \
-        --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental",
+        --address-url http://172.17.0.1:8008 --api-key {api_key} --vecdb --reset-memory --ast --experimental",
     );
     if !integrations_yaml.is_empty() {
         lsp_command.push_str(" --integrations-yaml ~/.config/refact/integrations.yaml");
@@ -658,7 +658,7 @@ async fn docker_container_sync_workspace(
     http_post_with_retries(
         &format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"),
         &sync_files_post,
-        8,
+        12,
     )
     .await?;
 
