@@ -28,7 +28,7 @@ all_refact_packages = {
         requires=["numpy", "tokenizers>=0.20.1", "torch", "requests>=2.31.0", "cloudpickle", "blobfile",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
                   "ujson", "zstandard", "scipy", "einops", "matplotlib", "giturlparse",
-                  "jsonlines", "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
+                  "jsonlines", "binpacking", "filelock", "tables==3.9.0", "pygments", "kshingle"],
         requires_packages=["code_contrast", "self_hosting_machinery", "refact_utils"],
         data=["git_command.exp"],
     ),
@@ -41,7 +41,7 @@ all_refact_packages = {
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
               "webgui/static/assets/fonts/*"]),
     "self_hosting_machinery": PyPackage(
-        requires=["python-multipart", "auto-gptq==0.7.1", "accelerate",
+        requires=["python-multipart", "accelerate",
                   "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
                   "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",

@@ -21,9 +21,7 @@ use crate::scratchpads::passthrough_convert_messages::convert_messages_to_openai
 use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered};
 use crate::tools::tools_execute::{run_tools_locally, run_tools_remotely};
 
-
 const DEBUG: bool = false;
-
 
 pub struct DeltaSender {
     pub role_sent: String,
@@ -36,7 +34,13 @@ impl DeltaSender {
         }
     }
 
-    pub fn feed_delta(&mut self, role: &str, _json: &Value, finish_reason: &FinishReason, tool_calls: Option<Value>) -> Value {
+    pub fn feed_delta(
+        &mut self,
+        role: &str,
+        _json: &Value,
+        finish_reason: &FinishReason,
+        tool_calls: Option<Value>,
+    ) -> Value {
         // TODO: correctly implement it
         let x = json!([{
             "index": 0,
@@ -51,7 +55,6 @@ impl DeltaSender {
         x
     }
 }
-
 
 // #[derive(Debug)]
 pub struct ChatPassthrough {
@@ -108,41 +111,81 @@ impl ScratchpadAbstract for ChatPassthrough {
     ) -> Result<String, String> {
         let (gcx, n_ctx, should_execute_remotely) = {
             let ccx_locked = ccx.lock().await;
-            (ccx_locked.global_context.clone(), ccx_locked.n_ctx, ccx_locked.should_execute_remotely)
+            (
+                ccx_locked.global_context.clone(),
+                ccx_locked.n_ctx,
+                ccx_locked.should_execute_remotely,
+            )
         };
         let style = self.post.style.clone();
-        let mut at_tools = if !should_execute_remotely { 
+        let mut at_tools = if !should_execute_remotely {
             tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?
         } else {
             IndexMap::new()
         };
 
         let messages = if self.prepend_system_prompt && self.allow_at {
-            prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await
+            prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+                gcx.clone(),
+                self.messages.clone(),
+                &self.post.meta,
+                &mut self.has_rag_results,
+            )
+            .await
         } else {
             self.messages.clone()
         };
-        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at && !should_execute_remotely {
-            run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
-        } else if self.allow_at {
-            run_at_commands_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
-        } else {
-            let messages_len = messages.len();
-            (messages, messages_len, false)
-        };
+        let (mut messages, undroppable_msg_n, _any_context_produced) =
+            if self.allow_at && !should_execute_remotely {
+                run_at_commands_locally(
+                    ccx.clone(),
+                    self.t.tokenizer.clone(),
+                    sampling_parameters_to_patch.max_new_tokens,
+                    &messages,
+                    &mut self.has_rag_results,
+                )
+                .await
+            } else if self.allow_at {
+                run_at_commands_remotely(
+                    ccx.clone(),
+                    &self.post.model,
+                    sampling_parameters_to_patch.max_new_tokens,
+                    &messages,
+                    &mut self.has_rag_results,
+                )
+                .await?
+            } else {
+                let messages_len = messages.len();
+                (messages, messages_len, false)
+            };
         if self.supports_tools {
             (messages, _) = if should_execute_remotely {
-                run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style, self.post.tools_confirmation).await?
+                run_tools_remotely(
+                    ccx.clone(),
+                    &self.post.model,
+                    sampling_parameters_to_patch.max_new_tokens,
+                    &messages,
+                    &mut self.has_rag_results,
+                    &style,
+                    self.post.tools_confirmation,
+                )
+                .await?
             } else {
-                run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style, self.post.tools_confirmation).await?
+                run_tools_locally(
+                    ccx.clone(),
+                    &mut at_tools,
+                    self.t.tokenizer.clone(),
+                    sampling_parameters_to_patch.max_new_tokens,
+                    &messages,
+                    &mut self.has_rag_results,
+                    &style,
+                    self.post.tools_confirmation,
+                )
+                .await?
             }
         };
 
-        _replace_broken_tool_call_messages(
-            &mut messages,
-            sampling_parameters_to_patch,
-            16000
-        );
+        _replace_broken_tool_call_messages(&mut messages, sampling_parameters_to_patch, 16000);
         _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
 
         let caps = {
@@ -173,7 +216,14 @@ impl ScratchpadAbstract for ChatPassthrough {
             messages
         };
 
-        let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
+        let limited_msgs = limit_messages_history(
+            &self.t,
+            &messages,
+            undroppable_msg_n,
+            sampling_parameters_to_patch.max_new_tokens,
+            n_ctx,
+        )
+        .unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });
@@ -198,25 +248,56 @@ impl ScratchpadAbstract for ChatPassthrough {
 
             let mut tools = if let Some(t) = post_tools {
                 // here we only use names from the tools in `post`
-                let turned_on = t.iter().filter_map(|x| {
-                    if let Value::Object(map) = x {
-                        map.get("function").and_then(|f| f.get("name")).and_then(|name| name.as_str().map(|s| s.to_string()))
-                    } else {
-                        None
-                    }
-                }).collect::<Vec<String>>();
+                let turned_on = t
+                    .iter()
+                    .filter_map(|x| {
+                        if let Value::Object(map) = x {
+                            map.get("function")
+                                .and_then(|f| f.get("name"))
+                                .and_then(|name| name.as_str().map(|s| s.to_string()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<String>>();
                 // and take descriptions of tools from the official source
                 if should_execute_remotely {
-                    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &self.post.meta.chat_id).await?;
+                    let port = docker_container_get_host_lsp_port_to_connect(
+                        gcx.clone(),
+                        &self.post.meta.chat_id,
+                    )
+                    .await?;
                     tracing::info!("Calling tools on port: {}", port);
-                    let tool_desclist: Vec<Value> = http_get_json(&format!("http://localhost:{port}/v1/tools")).await?;
-                    Some(tool_desclist.into_iter().filter(|tool_desc| {
-                        tool_desc.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).map_or(false, |n| turned_on.contains(&n.to_string()))
-                    }).collect::<Vec<_>>())
+                    let tool_desclist: Vec<Value> =
+                        http_get_json(&format!("http://localhost:{port}/v1/tools")).await?;
+                    Some(
+                        tool_desclist
+                            .into_iter()
+                            .filter(|tool_desc| {
+                                tool_desc
+                                    .get("function")
+                                    .and_then(|f| f.get("name"))
+                                    .and_then(|n| n.as_str())
+                                    .map_or(false, |n| turned_on.contains(&n.to_string()))
+                            })
+                            .collect::<Vec<_>>(),
+                    )
                 } else {
                     let allow_experimental = gcx.read().await.cmdline.experimental;
-                    let tool_descriptions = tool_description_list_from_yaml(at_tools, Some(&turned_on), allow_experimental).await?;
-                    Some(tool_descriptions.into_iter().map(|x: crate::tools::tools_description::ToolDesc|x.into_openai_style()).collect::<Vec<_>>())
+                    let tool_descriptions = tool_description_list_from_yaml(
+                        at_tools,
+                        Some(&turned_on),
+                        allow_experimental,
+                    )
+                    .await?;
+                    Some(
+                        tool_descriptions
+                            .into_iter()
+                            .map(|x: crate::tools::tools_description::ToolDesc| {
+                                x.into_openai_style()
+                            })
+                            .collect::<Vec<_>>(),
+                    )
                 }
             } else {
                 None
@@ -234,7 +315,10 @@ impl ScratchpadAbstract for ChatPassthrough {
             big_json["tools"] = json!(tools);
             big_json["tool_choice"] = json!(self.post.tool_choice);
             if DEBUG {
-                info!("PASSTHROUGH TOOLS ENABLED CNT: {:?}", tools.unwrap_or(vec![]).len());
+                info!(
+                    "PASSTHROUGH TOOLS ENABLED CNT: {:?}",
+                    tools.unwrap_or(vec![]).len()
+                );
             }
         } else if DEBUG {
             info!("PASSTHROUGH TOOLS NOT SUPPORTED");
@@ -254,7 +338,7 @@ impl ScratchpadAbstract for ChatPassthrough {
     fn response_streaming(
         &mut self,
         _delta: String,
-        _finish_reason: FinishReason
+        _finish_reason: FinishReason,
     ) -> Result<(Value, FinishReason), String> {
         Err("not implemented".to_string())
     }
@@ -267,12 +351,14 @@ impl ScratchpadAbstract for ChatPassthrough {
         Ok((json.clone(), finish_reason))
     }
 
-    fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
+    fn response_spontaneous(&mut self) -> Result<Vec<Value>, String> {
         self.has_rag_results.response_streaming()
     }
 
     fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String> {
-        let json_choices = self.delta_sender.feed_delta("assistant", &json!({}), &finish_reason, None);
+        let json_choices =
+            self.delta_sender
+                .feed_delta("assistant", &json!({}), &finish_reason, None);
         Ok(json!({
             "choices": json_choices,
             "object": "chat.completion.chunk",
@@ -281,7 +367,8 @@ impl ScratchpadAbstract for ChatPassthrough {
 }
 
 fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessage>) {
-    let tool_call_ids: HashSet<_> = messages.iter()
+    let tool_call_ids: HashSet<_> = messages
+        .iter()
         .filter(|m| !m.tool_call_id.is_empty())
         .map(|m| &m.tool_call_id)
         .cloned()
@@ -290,7 +377,10 @@ fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMess
         if let Some(tool_calls) = &m.tool_calls {
             let should_retain = tool_calls.iter().all(|tc| tool_call_ids.contains(&tc.id));
             if !should_retain {
-                tracing::error!("removing assistant message with unanswered tool tool_calls: {:?}", tool_calls);
+                tracing::error!(
+                    "removing assistant message with unanswered tool tool_calls: {:?}",
+                    tool_calls
+                );
             }
             should_retain
         } else {
@@ -298,7 +388,8 @@ fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMess
         }
     });
 
-    let tool_call_ids: HashSet<_> = messages.iter()
+    let tool_call_ids: HashSet<_> = messages
+        .iter()
         .filter_map(|x| x.tool_calls.clone())
         .flatten()
         .map(|x| x.id)
@@ -316,23 +407,34 @@ fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMess
 fn _replace_broken_tool_call_messages(
     messages: &mut Vec<ChatMessage>,
     sampling_parameters: &mut SamplingParameters,
-    new_max_new_tokens: usize
+    new_max_new_tokens: usize,
 ) {
     let high_budget_tools = vec!["create_textdoc", "replace_textdoc"];
     for message in messages.iter_mut() {
         if let Some(tool_calls) = &mut message.tool_calls {
-            let incorrect_reasons = tool_calls.iter().map(|tc| {
-                match serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
-                    Ok(_) => None,
-                    Err(err) => { 
-                        Some(format!("broken {}({}): {}", tc.function.name, tc.function.arguments, err))
+            let incorrect_reasons = tool_calls
+                .iter()
+                .map(|tc| {
+                    match serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
+                        Ok(_) => None,
+                        Err(err) => Some(format!(
+                            "broken {}({}): {}",
+                            tc.function.name, tc.function.arguments, err
+                        )),
                     }
-                }
-            }).filter_map(|x| x).collect::<Vec<_>>();
-            let has_high_budget_tools = tool_calls.iter().any(|tc| high_budget_tools.contains(&tc.function.name.as_str()));
+                })
+                .filter_map(|x| x)
+                .collect::<Vec<_>>();
+            let has_high_budget_tools = tool_calls
+                .iter()
+                .any(|tc| high_budget_tools.contains(&tc.function.name.as_str()));
             if !incorrect_reasons.is_empty() {
                 let extra_message = if message.finish_reason == Some("length".to_string()) {
-                    tracing::warn!("increasing `max_new_tokens` from {} to {}", sampling_parameters.max_new_tokens, new_max_new_tokens);
+                    tracing::warn!(
+                        "increasing `max_new_tokens` from {} to {}",
+                        sampling_parameters.max_new_tokens,
+                        new_max_new_tokens
+                    );
                     let tokens_msg = if sampling_parameters.max_new_tokens < new_max_new_tokens {
                         sampling_parameters.max_new_tokens = new_max_new_tokens;
                         format!("The message was stripped (finish_reason=`length`), the tokens budget was too small for the tool calls. Increasing `max_new_tokens` to {new_max_new_tokens}.")
@@ -344,7 +446,7 @@ fn _replace_broken_tool_call_messages(
                     } else {
                         format!("{tokens_msg} Change your strategy.")
                     }
-                } else {    
+                } else {
                     "".to_string()
                 };
 
@@ -374,25 +476,28 @@ fn _adapt_for_reasoning_models(
                 sampling_parameters.reasoning_effort = Some(ReasoningEffort::High);
             }
             // NOTE: OpenAI prefer user message over system
-            messages.iter().map(|msg| {
-                let mut msg = msg.clone();
-                if msg.role == "system" {
-                    msg.role = "user".to_string();
-                }
-                msg
-            }).collect()
-        },
+            messages
+                .iter()
+                .map(|msg| {
+                    let mut msg = msg.clone();
+                    if msg.role == "system" {
+                        msg.role = "user".to_string();
+                    }
+                    msg
+                })
+                .collect()
+        }
         "anthropic" => {
             // TODO: anthropic models require thinking to be passed in case of tool message in the end
             // also we should compute budget_tokens
             if supports_boost_reasoning && sampling_parameters.boost_reasoning {
                 sampling_parameters.thinking = Some(json!({
                     "type": "enabled",
-                    "budget_tokens": 1024,  // in range [1024, max max_completion_tokens]
+                    "budget_tokens": 32000,  // in range [1024, max max_completion_tokens]
                 }));
             }
             messages.clone()
-        },
+        }
         _ => {
             sampling_parameters.temperature = default_temperature.clone();
             messages.clone()

@@ -832,7 +832,6 @@ pub const KNOWN_MODELS: &str = r####"
 // according to https://medium.com/google-cloud/a-gemini-and-gemma-tokenizer-in-java-e18831ac9677
 // downloadable tokenizer.json does not exist for gemini, the only precise way is to use web-requests
 
-
 // XAI WARNING: tokenizer is non-precise as there's no publicly available tokenizer for these models
 // XAI says that for exact same model different tokenizers could be used
 // therefore, using tokenizer for grok-1 which may or may not provide proximate enough results
