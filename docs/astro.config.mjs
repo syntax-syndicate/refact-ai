@@ -343,6 +343,13 @@ export default defineConfig({
             'aria-label': 'View Supported AI Models'
           }
         },
+	{
+          label: 'Usage limits',
+          link: '/usage-limits/',
+          attrs: {
+            'aria-label': 'Usage limits'
+          }
+        },
         {
           label: 'BYOK',
           link: '/byok/',
